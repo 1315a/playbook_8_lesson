@@ -1,0 +1,48 @@
+- name: setup build
+  hosts: build
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - git
+          - default-jdk
+          - maven
+
+    - name: clone git repo
+      git:
+        repo: https://github.com/boxfuse/boxfuse-sample-java-war-hello.git
+        dest: /opt/boxfuse-sample-java-war-hello
+      become: yes
+
+    - name: build artifact
+      command: mvn clean package
+      args:
+        chdir: /opt/boxfuse-sample-java-war-hello
+      become: yes
+
+    - name: transfer .war file to prod
+      fetch:
+        src: /opt/boxfuse-sample-java-war-hello/target/hello-1.0.war
+        dest: /tmp/
+        flat: yes
+
+- name: setup prod
+  hosts: prod
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - default-jdk
+          - tomcat9
+
+    - name: deploy .war
+      copy:
+        src: /tmp/hello-1.0.war
+        dest: /var/lib/tomcat9/webapps/
+
+    - name: start Tomcat service
+      service:
+        name: tomcat9
+        state: started
+        enabled: yes
+      become: yes
